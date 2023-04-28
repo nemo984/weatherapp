@@ -26,24 +26,14 @@ const (
 )
 
 type Reminder struct {
-	ID               primitive.ObjectID     `bson:"_id,omitempty" json:"id"`
-	UserDeviceID     string                 `bson:"user_device_id" json:"userDeviceId"`
-	Type             ReminderType           `bson:"type" json:"type" binding:"required"`
-	Option           ReminderOption         `bson:"option" json:"option" binding:"required"`
-	LastRemindedTime time.Time              `bson:"last_reminded_time" json:"lastRemindedTime"`
-	RemindAgainOn    time.Time              `bson:"remind_again_on" json:"remindAgainOn"`
-	PeriodicDuration Duration               `bson:"periodic_duration" json:"periodicDuration,omitempty"`
-	TimeOfDay        TimeHours              `bson:"time_of_day" json:"timeOfDay,omitempty"`
-	OptionStrategy   ReminderOptionStrategy `bson:"-" json:"-"`
-}
-
-// later,,..
-func (r *Reminder) SetStrategy(reminderStrategy ReminderOptionStrategy) {
-	r.OptionStrategy = reminderStrategy
-}
-
-func (r *Reminder) CalculateRemindTime() {
-	r.OptionStrategy.CalculateRemindAgainOn()
+	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserDeviceID     string             `bson:"user_device_id" json:"userDeviceId"`
+	Type             ReminderType       `bson:"type" json:"type" binding:"required"`
+	Option           ReminderOption     `bson:"option" json:"option" binding:"required"`
+	LastRemindedTime time.Time          `bson:"last_reminded_time" json:"lastRemindedTime"`
+	RemindAgainOn    time.Time          `bson:"remind_again_on" json:"remindAgainOn"`
+	PeriodicDuration Duration           `bson:"periodic_duration" json:"periodicDuration,omitempty"`
+	TimeOfDay        TimeHours          `bson:"time_of_day" json:"timeOfDay,omitempty"`
 }
 
 type Duration struct {
