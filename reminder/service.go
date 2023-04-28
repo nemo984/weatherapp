@@ -16,9 +16,9 @@ const (
 )
 
 type ReminderService interface {
-	StartReminderJob(context context.Context) error
-	UpsertReminder(reminder Reminder) *Reminder
-	ListReminders(reminder Reminder) []Reminder
+	GetUserReminders(ctx context.Context, deviceID string) ([]Reminder, error)
+	StartReminderJob(ctx context.Context) error
+	UpsertReminder(ctx context.Context, reminder Reminder) (Reminder, error)
 }
 
 type reminderService struct {
@@ -28,8 +28,18 @@ type reminderService struct {
 	reminderRepo   ReminderRepositary
 }
 
-func NewService() *reminderService {
-	return &reminderService{}
+func NewService(repo ReminderRepositary) *reminderService {
+	return &reminderService{reminderRepo: repo}
+}
+
+func (rs *reminderService) GetUserReminders(ctx context.Context, deviceID string) ([]Reminder, error) {
+	return rs.reminderRepo.ListUserReminders(ctx, deviceID)
+}
+
+func (rs *reminderService) UpsertReminder(ctx context.Context, reminder Reminder) (Reminder, error) {
+	reminderStrategy := newReminderOptionStrategy(&reminder)
+	reminderStrategy.CalculateRemindAgainOn()
+	return rs.reminderRepo.Upsert(ctx, reminder)
 }
 
 func (rs *reminderService) StartReminderJob(ctx context.Context) error {
@@ -42,14 +52,12 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 			for _, reminder := range reminders {
 				reminderOption := newReminderOptionStrategy(reminder)
 				if reminderOption.ShouldRemind() {
-					go func(reminder *Reminder) {
-						fmt.Printf("reminded: %+v\n", reminder)
-						rs.remind(ctx, reminder)
-						reminderOption.Reminded()
-						rs.reminderRepo.UpdateReminder(reminder)
-					}(reminder)
+					fmt.Printf("reminded: %+v\n", reminder)
+					rs.remind(ctx, reminder)
+					reminderOption.CalculateRemindAgainOn()
 				}
 			}
+			rs.reminderRepo.UpsertMany(ctx, reminders)
 		case <-ctx.Done():
 			return ctx.Err()
 		}

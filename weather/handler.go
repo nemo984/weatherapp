@@ -1,7 +1,7 @@
 package weather
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/nemo984/weatherapp/middleware"
@@ -21,14 +21,27 @@ func NewHandler(service IService) *Handler {
 
 func (h *Handler) GetWeather(c *gin.Context) {
 	lat, lon := middleware.GetLocationFromContext(c)
-	weather, _ := h.service.GetCurrentWeather(c, WeatherRequest{
+	log.Println(lat, lon)
+	weather, err := h.service.GetCurrentWeather(c, WeatherRequest{
 		Lat: lat,
 		Lon: lon,
 	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, weather)
 }
 
 func (h *Handler) GetAirQuality(c *gin.Context) {
-	aq, _ := h.service.GetAirQuality(c)
-	fmt.Printf("%+v", aq)
+	aq, err := h.service.GetAirQuality(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, aq)
 }

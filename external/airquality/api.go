@@ -30,7 +30,7 @@ type AirQualityResponse struct {
 		Dominentpol string `json:"dominentpol"`
 		Iaqi        struct {
 			H struct {
-				V int `json:"v"`
+				V float64 `json:"v"`
 			} `json:"h"`
 			No2 struct {
 				V float64 `json:"v"`
@@ -54,34 +54,34 @@ type AirQualityResponse struct {
 				V float64 `json:"v"`
 			} `json:"w"`
 			Wg struct {
-				V int `json:"v"`
+				V float64 `json:"v"`
 			} `json:"wg"`
 		} `json:"iaqi"`
 		Time struct {
 			S   string    `json:"s"`
 			Tz  string    `json:"tz"`
-			V   int       `json:"v"`
+			V   float64   `json:"v"`
 			Iso time.Time `json:"iso"`
 		} `json:"time"`
 		Forecast struct {
 			Daily struct {
 				O3 []struct {
-					Avg int    `json:"avg"`
-					Day string `json:"day"`
-					Max int    `json:"max"`
-					Min int    `json:"min"`
+					Avg float64 `json:"avg"`
+					Day string  `json:"day"`
+					Max float64 `json:"max"`
+					Min float64 `json:"min"`
 				} `json:"o3"`
 				Pm10 []struct {
-					Avg int    `json:"avg"`
-					Day string `json:"day"`
-					Max int    `json:"max"`
-					Min int    `json:"min"`
+					Avg float64 `json:"avg"`
+					Day string  `json:"day"`
+					Max float64 `json:"max"`
+					Min float64 `json:"min"`
 				} `json:"pm10"`
 				Pm25 []struct {
-					Avg int    `json:"avg"`
-					Day string `json:"day"`
-					Max int    `json:"max"`
-					Min int    `json:"min"`
+					Avg float64 `json:"avg"`
+					Day string  `json:"day"`
+					Max float64 `json:"max"`
+					Min float64 `json:"min"`
 				} `json:"pm25"`
 			} `json:"daily"`
 		} `json:"forecast"`

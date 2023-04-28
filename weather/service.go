@@ -14,10 +14,11 @@ import (
 const (
 	weatherCacheKey    = "weatherKey-%s"
 	airQualityCacheKey = "airQualityKey"
+	geohashPrecision   = 6
 )
 
 type IService interface {
-	GetCurrentWeather(ctx context.Context, req WeatherRequest) (*weather.WeatherResponse, error)
+	GetCurrentWeather(ctx context.Context, req WeatherRequest) (*WeatherResponse, error)
 	GetAirQuality(ctx context.Context) (*airquality.AirQualityResponse, error)
 }
 
@@ -38,20 +39,49 @@ func NewService(airQualityAPI airquality.IAirQualityAPI, weatherAPI weather.IWea
 	}
 }
 
-func (s *Service) GetCurrentWeather(ctx context.Context, req WeatherRequest) (*weather.WeatherResponse, error) {
-	fmt.Println(s.cache.Items())
-	weatherKey := getCacheKeyWithLocation(req.Lat, req.Lon)
+func (s *Service) GetCurrentWeather(ctx context.Context, req WeatherRequest) (*WeatherResponse, error) {
+	weatherKey := getCacheKeyWithLocation(weatherCacheKey, req.Lat, req.Lon)
 	w, found := s.cache.Get(weatherKey)
 	if found {
-		return w.(*weather.WeatherResponse), nil
+		return w.(*WeatherResponse), nil
 	}
 
-	weather, err := s.weatherAPI.GetWeather(ctx, req.Lat, req.Lon)
+	we, err := s.weatherAPI.GetWeather(ctx, req.Lat, req.Lon)
 	if err != nil {
-		return weather, err
+		return &WeatherResponse{}, err
 	}
-	s.cache.Set(weatherKey, weather, 0)
-	return weather, nil
+
+	res := &WeatherResponse{
+		Current: *we,
+	}
+	forecast, err := s.weatherAPI.GetForecast(ctx, req.Lat, req.Lon)
+	if err != nil {
+		return res, err
+	}
+
+	res.City = forecast.City
+	dayGroupMap := make(map[string][]ForecastHour)
+	for _, forecast := range forecast.List {
+		t := time.Unix(int64(forecast.Dt), 0)
+		weekDay := t.Weekday().String()
+		hour := fmt.Sprintf("%.2f", float64(t.Hour()))
+		dayGroupMap[weekDay] = append(dayGroupMap[weekDay], ForecastHour{
+			Forecast: forecast,
+			Hour:     hour,
+		})
+	}
+	for day, forecasts := range dayGroupMap {
+		f := ForecastDay{
+			Day: day,
+		}
+		for _, forecast := range forecasts {
+			f.Hours = append(f.Hours, forecast)
+		}
+		res.Forecasts = append(res.Forecasts, f)
+	}
+
+	s.cache.Set(weatherKey, res, 0)
+	return res, nil
 }
 
 func (s *Service) GetAirQuality(ctx context.Context) (*airquality.AirQualityResponse, error) {
@@ -68,6 +98,6 @@ func (s *Service) GetAirQuality(ctx context.Context) (*airquality.AirQualityResp
 	return airQuality, nil
 }
 
-func getCacheKeyWithLocation(lat, lon float64) string {
-	return fmt.Sprintf(weatherCacheKey, geohash.EncodeWithPrecision(lat, lon, 6))
+func getCacheKeyWithLocation(key string, lat, lon float64) string {
+	return fmt.Sprintf(key, geohash.EncodeWithPrecision(lat, lon, geohashPrecision))
 }

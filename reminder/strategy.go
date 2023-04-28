@@ -1,10 +1,13 @@
 package reminder
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 type ReminderOptionStrategy interface {
 	ShouldRemind() bool
-	Reminded() // set next time to remind on
+	CalculateRemindAgainOn() // set next time to remind on
 }
 
 func newReminderOptionStrategy(r *Reminder) ReminderOptionStrategy {
@@ -23,12 +26,12 @@ type PeriodicReminder struct {
 }
 
 func (pr *PeriodicReminder) ShouldRemind() bool {
-	return time.Since(pr.LastRemindedTime) >= pr.PeriodicDuration
+	return time.Since(pr.LastRemindedTime) >= pr.PeriodicDuration.Duration
 }
 
-func (pr *PeriodicReminder) Reminded() {
+func (pr *PeriodicReminder) CalculateRemindAgainOn() {
 	pr.LastRemindedTime = time.Now()
-	pr.RemindAgainOn = pr.LastRemindedTime.Add(pr.PeriodicDuration)
+	pr.RemindAgainOn = pr.LastRemindedTime.Add(pr.PeriodicDuration.Duration)
 }
 
 type TimeOfDayReminder struct {
@@ -36,11 +39,14 @@ type TimeOfDayReminder struct {
 }
 
 func (tor *TimeOfDayReminder) ShouldRemind() bool {
-	return tor.LastRemindedTime.Before(tor.TimeOfDay) && tor.TimeOfDay.Truncate(time.Minute).Equal(time.Now().Truncate(time.Minute))
+	return true
 }
 
-func (tor *TimeOfDayReminder) Reminded() {
+func (tor *TimeOfDayReminder) CalculateRemindAgainOn() {
 	tor.LastRemindedTime = time.Now()
-	tor.RemindAgainOn = tor.TimeOfDay.Add(24 * time.Hour)
-	tor.TimeOfDay = tor.RemindAgainOn
+	tor.RemindAgainOn = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), tor.TimeOfDay.Hour(), tor.LastRemindedTime.Minute(), 0, 0, time.Now().Location())
+	log.Println(tor.RemindAgainOn)
+	if tor.RemindAgainOn.Before(tor.LastRemindedTime) {
+		tor.RemindAgainOn.AddDate(0, 0, 1)
+	}
 }

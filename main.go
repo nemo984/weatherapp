@@ -1,9 +1,15 @@
 package main
 
 import (
+	"context"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/nemo984/weatherapp/external/airquality"
 	weatherAPI "github.com/nemo984/weatherapp/external/weather"
+	"github.com/nemo984/weatherapp/reminder"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/nemo984/weatherapp/middleware"
 	"github.com/nemo984/weatherapp/user"
@@ -11,6 +17,18 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	reminderRepo := reminder.NewRepositary(client.Database("reminders"))
+	reminderService := reminder.NewService(*reminderRepo)
+	reminderHandler := reminder.Handler{ReminderService: reminderService}
 	r := gin.Default()
 	ws := weather.NewService(&airquality.AirQualityAPI{}, &weatherAPI.WeatherAPI{})
 	wh := weather.NewHandler(ws)
@@ -26,15 +44,11 @@ func main() {
 	usersRoute.Use(middleware.AttachUser(us))
 	{
 
-		remindersRoute := r.Group("/reminders")
+		remindersRoute := usersRoute.Group("/reminders")
 		{
-			remindersRoute.GET("", wh.GetAirQuality)
-			reminderSettingsRoute := remindersRoute.Group("/settings")
-			{
-				reminderSettingsRoute.GET("", wh.GetAirQuality)
-				reminderSettingsRoute.POST("", wh.GetAirQuality)
-				reminderSettingsRoute.PUT("/:reminder-id", wh.GetAirQuality)
-			}
+			remindersRoute.GET("", reminderHandler.GetReminders)
+			remindersRoute.POST("", reminderHandler.UpsertReminder)
+			remindersRoute.PUT("", reminderHandler.UpsertReminder)
 		}
 	}
 
