@@ -47,11 +47,13 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("ticked")
+			log.Println("ticked, reminder job loop")
 			reminders, err := rs.reminderRepo.GetRemindersToRemind(ctx)
 			if err != nil {
 				log.Printf("error reminder job, get reminders: %w\n", err)
 			}
+			log.Printf("got %v reminders to remind\n", len(reminders))
+
 			for _, reminder := range reminders {
 				reminderOption := newReminderOptionStrategy(&reminder)
 				if reminderOption.ShouldRemind() {
@@ -60,7 +62,11 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 					reminderOption.CalculateRemindAgainOn()
 				}
 			}
-			rs.reminderRepo.UpsertMany(ctx, reminders)
+
+			err = rs.reminderRepo.UpsertMany(ctx, reminders)
+			if err != nil {
+				log.Printf("error reminder job, upsert many: %w\n", err)
+			}
 		case <-ctx.Done():
 			return ctx.Err()
 		}

@@ -29,6 +29,7 @@ func main() {
 	reminderRepo := reminder.NewRepositary(client.Database("weatherapp"))
 	reminderService := reminder.NewService(*reminderRepo)
 	reminderHandler := reminder.Handler{ReminderService: reminderService}
+
 	r := gin.Default()
 	ws := weather.NewService(&airquality.AirQualityAPI{}, &weatherAPI.WeatherAPI{})
 	wh := weather.NewHandler(ws)
@@ -55,6 +56,7 @@ func main() {
 		}
 	}
 
+	go reminderService.StartReminderJob(context.Background())
 	r.Run()
 }
 

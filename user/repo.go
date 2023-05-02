@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -18,9 +17,6 @@ func NewRepositary(mongodb *mongo.Database) *UserRepositary {
 }
 
 func (repo *UserRepositary) UpsertUser(ctx context.Context, user *User) (User, error) {
-	if user.ID == primitive.NilObjectID {
-		user.ID = primitive.NewObjectID()
-	}
 
 	filter := bson.M{
 		"device_id": user.DeviceID,

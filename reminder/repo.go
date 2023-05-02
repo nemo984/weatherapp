@@ -25,6 +25,7 @@ func (repo *ReminderRepositary) GetRemindersToRemind(ctx context.Context) ([]Rem
 	cursor, err := repo.collection.Find(ctx, bson.M{
 		"remind_again_on": bson.M{
 			"$gt": primitive.NewDateTimeFromTime(time.Now().Add(-1 * time.Minute)),
+			"$lt": primitive.NewDateTimeFromTime(time.Now().Add(1 * time.Minute)),
 		},
 	})
 	if err != nil {
