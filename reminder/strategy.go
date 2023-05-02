@@ -1,7 +1,6 @@
 package reminder
 
 import (
-	"log"
 	"time"
 )
 
@@ -39,13 +38,12 @@ type TimeOfDayReminder struct {
 }
 
 func (tor *TimeOfDayReminder) ShouldRemind() bool {
-	return true
+	return time.Since(tor.LastRemindedTime) >= 5*time.Second
 }
 
 func (tor *TimeOfDayReminder) CalculateRemindAgainOn() {
 	tor.LastRemindedTime = time.Now()
-	tor.RemindAgainOn = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), tor.TimeOfDay.Hour(), tor.LastRemindedTime.Minute(), 0, 0, time.Now().Location())
-	log.Println(tor.RemindAgainOn)
+	tor.RemindAgainOn = time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), tor.TimeOfDay.Hour(), tor.TimeOfDay.Minute(), 0, 0, time.Now().Location())
 	if tor.RemindAgainOn.Before(tor.LastRemindedTime) {
 		tor.RemindAgainOn.AddDate(0, 0, 1)
 	}

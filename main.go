@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"log"
 	"time"
 
+	"github.com/appleboy/go-fcm"
 	"github.com/gin-gonic/gin"
 	"github.com/nemo984/weatherapp/external/airquality"
 	weatherAPI "github.com/nemo984/weatherapp/external/weather"
@@ -26,16 +28,23 @@ func main() {
 		}
 	}()
 
-	reminderRepo := reminder.NewRepositary(client.Database("weatherapp"))
-	reminderService := reminder.NewService(*reminderRepo)
-	reminderHandler := reminder.Handler{ReminderService: reminderService}
-
-	r := gin.Default()
-	ws := weather.NewService(&airquality.AirQualityAPI{}, &weatherAPI.WeatherAPI{})
-	wh := weather.NewHandler(ws)
+	token := "AAAAUscJt1A:APA91bEOdp_yKsWG4xJVmrMHMDZ21nXiGsTW7QqxVIEoO_xf9N309saV1xCI6_2wmNKSZS680cSynEygheyTNEvaJQnU1KyCTeszBf8gEN258gyVksYeSS_AMUWWIu_WRUNfbq_Qwpgo"
+	fClient, err := fcm.NewClient(token)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	userRepo := user.NewRepositary(client.Database("weatherapp"))
 	us := user.NewService(*userRepo)
+	ws := weather.NewService(&airquality.AirQualityAPI{}, &weatherAPI.WeatherAPI{})
+
+	reminderRepo := reminder.NewRepositary(client.Database("weatherapp"))
+	reminderService := reminder.NewService(*reminderRepo, us, ws, fClient)
+	reminderHandler := reminder.Handler{ReminderService: reminderService}
+
+	r := gin.Default()
+	wh := weather.NewHandler(ws)
+
 	userHandler := user.NewHandler(us)
 
 	r.Use(gin.Recovery())

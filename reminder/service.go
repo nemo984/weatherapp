@@ -28,8 +28,8 @@ type reminderService struct {
 	reminderRepo   ReminderRepositary
 }
 
-func NewService(repo ReminderRepositary) *reminderService {
-	return &reminderService{reminderRepo: repo}
+func NewService(repo ReminderRepositary, userService user.Service, weatherService weather.IService, fcmClient *fcm.Client) *reminderService {
+	return &reminderService{reminderRepo: repo, userService: userService, weatherService: weatherService, fcmClient: fcmClient}
 }
 
 func (rs *reminderService) GetUserReminders(ctx context.Context, deviceID string) ([]Reminder, error) {
@@ -55,10 +55,10 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 			log.Printf("got %v reminders to remind\n", len(reminders))
 
 			for _, reminder := range reminders {
-				reminderOption := newReminderOptionStrategy(&reminder)
+				reminderOption := newReminderOptionStrategy(reminder)
 				if reminderOption.ShouldRemind() {
 					fmt.Printf("reminded: %+v\n", reminder)
-					rs.remind(ctx, reminder)
+					rs.remind(ctx, *reminder)
 					reminderOption.CalculateRemindAgainOn()
 				}
 			}
@@ -79,27 +79,35 @@ func (rs *reminderService) remind(ctx context.Context, reminder Reminder) error 
 		return err
 	}
 
+	lat, lon := 13.7563, 100.5018
+	if user.Location.Lon != 0 {
+		lat = user.Location.Lon
+	}
+	if user.Location.Lat != 0 {
+		lon = user.Location.Lat
+	}
+
 	noti := &fcm.Notification{}
 	noti.Title = fmt.Sprintf("%s %s Reminder", reminder.Option, reminder.Type)
 	if reminder.Type == Weather {
 		wtr, err := rs.weatherService.GetCurrentWeather(ctx, weather.WeatherRequest{
-			Lat: user.Location.Lat,
-			Lon: user.Location.Lon,
+			Lat: lat,
+			Lon: lon,
 		})
 		if err != nil {
 			return err
 		}
 
 		mainTemp := wtr.Current.Main
-		noti.Body = fmt.Sprintf("Temp: %f (%s), Feels like: %f, High %f, Low %f", mainTemp.Temp, wtr.Current.Weather[0].Description, mainTemp.FeelsLike, mainTemp.TempMax, mainTemp.TempMin)
+		noti.Body = fmt.Sprintf("Temp: %.2f (%s), Feels like: %.2f, High %.2f, Low %.2f", mainTemp.Temp, wtr.Current.Weather[0].Description, mainTemp.FeelsLike, mainTemp.TempMax, mainTemp.TempMin)
 	} else {
 		airQuality, err := rs.weatherService.GetAirQuality(ctx)
 		if err != nil {
 			return err
 		}
-		noti.Body = fmt.Sprintf("Current PM 2.5: %f", airQuality.Data.Iaqi.Pm25.V)
+		noti.Body = fmt.Sprintf("Current PM 2.5: %.2f", airQuality.Data.Iaqi.Pm25.V)
 	}
-	rs.SendPushNotification(context.Background(), "Send test", noti)
+	rs.SendPushNotification(context.Background(), user.FCMToken, noti)
 	return nil
 }
 
@@ -109,13 +117,6 @@ func (rs *reminderService) SendPushNotification(ctx context.Context, deviceToken
 		To:           deviceToken,
 		Notification: noti,
 	}
-
-	token := "AAAAUscJt1A:APA91bEOdp_yKsWG4xJVmrMHMDZ21nXiGsTW7QqxVIEoO_xf9N309saV1xCI6_2wmNKSZS680cSynEygheyTNEvaJQnU1KyCTeszBf8gEN258gyVksYeSS_AMUWWIu_WRUNfbq_Qwpgo"
-	client, err := fcm.NewClient(token)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	rs.fcmClient = client
 
 	response, err := rs.fcmClient.SendWithContext(ctx, msg)
 	if err != nil {

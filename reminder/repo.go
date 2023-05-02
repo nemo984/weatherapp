@@ -19,8 +19,8 @@ func NewRepositary(mongodb *mongo.Database) *ReminderRepositary {
 }
 
 // retrieves reminder that are close to to remind time
-func (repo *ReminderRepositary) GetRemindersToRemind(ctx context.Context) ([]Reminder, error) {
-	var reminders []Reminder
+func (repo *ReminderRepositary) GetRemindersToRemind(ctx context.Context) ([]*Reminder, error) {
+	var reminders []*Reminder
 
 	cursor, err := repo.collection.Find(ctx, bson.M{
 		"remind_again_on": bson.M{
@@ -70,7 +70,7 @@ func (repo *ReminderRepositary) ListUserReminders(ctx context.Context, userDevic
 	return reminders, nil
 }
 
-func (repo *ReminderRepositary) UpsertMany(ctx context.Context, reminders []Reminder) error {
+func (repo *ReminderRepositary) UpsertMany(ctx context.Context, reminders []*Reminder) error {
 	operations := make([]mongo.WriteModel, len(reminders))
 	for i, reminder := range reminders {
 		operations[i] = mongo.NewReplaceOneModel().
