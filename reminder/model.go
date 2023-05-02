@@ -18,12 +18,34 @@ const (
 	// RainingForecast ReminderType = "Raining Forecast"
 )
 
+func (rt ReminderType) String() string {
+	switch rt {
+	case Weather:
+		return "Weather"
+	case AirQuality:
+		return "Air Quality"
+	default:
+		return "Unknown"
+	}
+}
+
 type ReminderOption string
 
 const (
 	Periodic  ReminderOption = "PERIODIC"
 	TimeOfDay ReminderOption = "TIME_OF_DAY"
 )
+
+func (ro ReminderOption) String() string {
+	switch ro {
+	case Periodic:
+		return "Perodic"
+	case TimeOfDay:
+		return "Time of the Day"
+	default:
+		return "Unknown"
+	}
+}
 
 type Reminder struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`

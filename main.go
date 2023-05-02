@@ -26,14 +26,16 @@ func main() {
 		}
 	}()
 
-	reminderRepo := reminder.NewRepositary(client.Database("reminders"))
+	reminderRepo := reminder.NewRepositary(client.Database("weatherapp"))
 	reminderService := reminder.NewService(*reminderRepo)
 	reminderHandler := reminder.Handler{ReminderService: reminderService}
 	r := gin.Default()
 	ws := weather.NewService(&airquality.AirQualityAPI{}, &weatherAPI.WeatherAPI{})
 	wh := weather.NewHandler(ws)
 
-	us := user.NewService()
+	userRepo := user.NewRepositary(client.Database("weatherapp"))
+	us := user.NewService(*userRepo)
+	userHandler := user.NewHandler(us)
 
 	r.Use(gin.Recovery())
 	r.Use(middleware.AttachLocation())
@@ -41,6 +43,7 @@ func main() {
 	r.GET("/air-quality", wh.GetAirQuality)
 
 	usersRoute := r.Group("/users")
+	usersRoute.PUT("/fcm-token", userHandler.UpdateFCMToken)
 	usersRoute.Use(middleware.AttachUser(us))
 	{
 

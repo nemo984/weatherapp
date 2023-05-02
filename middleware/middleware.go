@@ -21,7 +21,14 @@ func AttachUser(userService user.Service) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, "missing X-Device-ID header")
 			return
 		}
-		user := userService.GetOrCreateUser(c, deviceID)
+		user, err := userService.GetOrCreateUser(c, deviceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
 		c.Set(ctxUserKey, user)
 	}
 }
@@ -53,9 +60,9 @@ func AttachLocation() gin.HandlerFunc {
 	}
 }
 
-func GetUserFromContext(c *gin.Context) *user.User {
+func GetUserFromContext(c *gin.Context) user.User {
 	value, _ := c.Get(ctxUserKey)
-	return value.(*user.User)
+	return value.(user.User)
 }
 
 func GetLocationFromContext(c *gin.Context) (lat float64, lon float64) {

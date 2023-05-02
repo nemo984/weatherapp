@@ -48,9 +48,12 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			fmt.Println("ticked")
-			reminders := rs.reminderRepo.GetRemindersToRemind()
+			reminders, err := rs.reminderRepo.GetRemindersToRemind(ctx)
+			if err != nil {
+				log.Printf("error reminder job, get reminders: %w\n", err)
+			}
 			for _, reminder := range reminders {
-				reminderOption := newReminderOptionStrategy(reminder)
+				reminderOption := newReminderOptionStrategy(&reminder)
 				if reminderOption.ShouldRemind() {
 					fmt.Printf("reminded: %+v\n", reminder)
 					rs.remind(ctx, reminder)
@@ -64,11 +67,14 @@ func (rs *reminderService) StartReminderJob(ctx context.Context) error {
 	}
 }
 
-func (rs *reminderService) remind(ctx context.Context, reminder *Reminder) error {
-	user := rs.userService.GetOrCreateUser(ctx, reminder.UserDeviceID)
-	if !user.ReminderEnabled {
-		return nil
+func (rs *reminderService) remind(ctx context.Context, reminder Reminder) error {
+	user, err := rs.userService.GetOrCreateUser(ctx, reminder.UserDeviceID)
+	if err != nil {
+		return err
 	}
+
+	noti := &fcm.Notification{}
+	noti.Title = fmt.Sprintf("%s %s Reminder", reminder.Option, reminder.Type)
 	if reminder.Type == Weather {
 		wtr, err := rs.weatherService.GetCurrentWeather(ctx, weather.WeatherRequest{
 			Lat: user.Location.Lat,
@@ -77,31 +83,27 @@ func (rs *reminderService) remind(ctx context.Context, reminder *Reminder) error
 		if err != nil {
 			return err
 		}
-		fmt.Println(wtr)
+
+		mainTemp := wtr.Current.Main
+		noti.Body = fmt.Sprintf("Temp: %f (%s), Feels like: %f, High %f, Low %f", mainTemp.Temp, wtr.Current.Weather[0].Description, mainTemp.FeelsLike, mainTemp.TempMax, mainTemp.TempMin)
 	} else {
 		airQuality, err := rs.weatherService.GetAirQuality(ctx)
 		if err != nil {
 			return err
 		}
-		fmt.Println(airQuality)
+		noti.Body = fmt.Sprintf("Current PM 2.5: %f", airQuality.Data.Iaqi.Pm25.V)
 	}
+	rs.SendPushNotification(context.Background(), "Send test", noti)
 	return nil
 }
 
-func (rs *reminderService) SendPushNotification(ctx context.Context, deviceToken string) error {
+func (rs *reminderService) SendPushNotification(ctx context.Context, deviceToken string, noti *fcm.Notification) error {
 	// Create the message to be sent.
 	msg := &fcm.Message{
-		To: deviceToken,
-		Data: map[string]interface{}{
-			"foo": "bar",
-		},
-		Notification: &fcm.Notification{
-			Title: "title",
-			Body:  "body",
-		},
+		To:           deviceToken,
+		Notification: noti,
 	}
 
-	// Create a FCM client to send the message.
 	token := "AAAAUscJt1A:APA91bEOdp_yKsWG4xJVmrMHMDZ21nXiGsTW7QqxVIEoO_xf9N309saV1xCI6_2wmNKSZS680cSynEygheyTNEvaJQnU1KyCTeszBf8gEN258gyVksYeSS_AMUWWIu_WRUNfbq_Qwpgo"
 	client, err := fcm.NewClient(token)
 	if err != nil {
@@ -109,7 +111,6 @@ func (rs *reminderService) SendPushNotification(ctx context.Context, deviceToken
 	}
 	rs.fcmClient = client
 
-	// Send the message and receive the response without retries.
 	response, err := rs.fcmClient.SendWithContext(ctx, msg)
 	if err != nil {
 		log.Fatalln(err)

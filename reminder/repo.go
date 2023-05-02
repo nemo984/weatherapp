@@ -2,6 +2,7 @@ package reminder
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,8 +19,22 @@ func NewRepositary(mongodb *mongo.Database) *ReminderRepositary {
 }
 
 // retrieves reminder that are close to to remind time
-func (repo *ReminderRepositary) GetRemindersToRemind() []*Reminder {
-	return []*Reminder{}
+func (repo *ReminderRepositary) GetRemindersToRemind(ctx context.Context) ([]Reminder, error) {
+	var reminders []Reminder
+
+	cursor, err := repo.collection.Find(ctx, bson.M{
+		"remind_again_on": bson.M{
+			"$gt": primitive.NewDateTimeFromTime(time.Now().Add(-1 * time.Minute)),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cursor.All(ctx, &reminders); err != nil {
+		return nil, err
+	}
+	return reminders, nil
 }
 
 func (repo *ReminderRepositary) Upsert(ctx context.Context, reminder Reminder) (Reminder, error) {
@@ -54,7 +69,7 @@ func (repo *ReminderRepositary) ListUserReminders(ctx context.Context, userDevic
 	return reminders, nil
 }
 
-func (repo *ReminderRepositary) UpsertMany(ctx context.Context, reminders []*Reminder) error {
+func (repo *ReminderRepositary) UpsertMany(ctx context.Context, reminders []Reminder) error {
 	operations := make([]mongo.WriteModel, len(reminders))
 	for i, reminder := range reminders {
 		operations[i] = mongo.NewReplaceOneModel().

@@ -42,10 +42,10 @@ type AirQualityResponse struct {
 				V float64 `json:"v"`
 			} `json:"p"`
 			Pm10 struct {
-				V int `json:"v"`
+				V float64 `json:"v"`
 			} `json:"pm10"`
 			Pm25 struct {
-				V int `json:"v"`
+				V float64 `json:"v"`
 			} `json:"pm25"`
 			T struct {
 				V float64 `json:"v"`

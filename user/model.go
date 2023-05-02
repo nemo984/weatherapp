@@ -5,15 +5,16 @@ import (
 )
 
 type User struct {
-	ID              primitive.ObjectID `bson:"_id,omitempty"`
-	DeviceID        string
-	Location        Location
-	ReminderEnabled bool
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	DeviceID string             `bson:"device_id"`
+	Location Location           `bson:"location"`
+	FCMToken string             `bson:"fcm_token" json:"fcmToken"`
 }
 
 type Location struct {
 	Lat, Lon float64
 }
 
-// Collections
-//
+type UpdateFCMTokenRequest struct {
+	FCMToken string `json:"fcmToken"`
+}
